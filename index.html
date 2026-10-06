@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Medicine Scenario Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom styles for print */
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
+            #scenario-output {
+                display: block !important;
+                box-shadow: none !important;
+                border: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .scenario-section {
+                page-break-inside: avoid;
+                padding-top: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        
+        <!-- Header -->
+        <header class="text-center mb-8 no-print">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Emergency Medicine Scenario Generator</h1>
+            <p class="text-gray-600 mt-2">Create tailored simulation scenarios for medical training.</p>
+        </header>
+
+        <!-- Input Controls -->
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mb-8 no-print">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Age Group -->
+                <div>
+                    <label for="age-group" class="block text-sm font-medium text-gray-700 mb-1">Age Group</label>
+                    <select id="age-group" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                        <option value="adult">Adult</option>
+                        <option value="child">Child</option>
+                        <option value="elderly">Elderly</option>
+                    </select>
+                </div>
+                <!-- Problem Type -->
+                <div>
+                    <label for="problem-type" class="block text-sm font-medium text-gray-700 mb-1">Problem Type</label>
+                    <select id="problem-type" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                        <option value="random">Random</option>
+                        <option value="cardiac_arrest">Cardiac Arrest</option>
+                        <option value="medical">Medical</option>
+                        <option value="trauma">Trauma</option>
+                        <option value="obstetric">Obstetric</option>
+                    </select>
+                </div>
+                <!-- Human Factors Challenge -->
+                <div>
+                    <label for="human-factors" class="block text-sm font-medium text-gray-700 mb-1">Human Factors Challenge</label>
+                    <select id="human-factors" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                        <option value="standard">Standard (None)</option>
+                        <option value="blindfolded_leader">Blindfolded Leader</option>
+                        <option value="leader_only_speaks">Only Leader Speaks</option>
+                        <option value="language_barrier">Language Barrier</option>
+                        <option value="obstructive_person">Obstructive Person</option>
+                    </select>
+                </div>
+            </div>
+            <!-- Action Button -->
+            <div class="mt-8 text-center">
+                <button id="generate-btn" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transition-transform transform hover:scale-105">
+                    Generate Scenario
+                </button>
+            </div>
+        </div>
+
+        <!-- Scenario Output Section -->
+        <div id="scenario-output" class="bg-white p-6 md:p-10 rounded-xl shadow-lg" style="display: none;">
+            <!-- This content will be populated by JavaScript -->
+        </div>
+        
+        <!-- Action Buttons for Output -->
+        <div id="output-actions" class="mt-6 text-center no-print" style="display: none;">
+             <button id="print-btn" class="bg-gray-700 text-white font-bold py-3 px-8 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-4 focus:ring-gray-500 focus:ring-opacity-50 transition">
+                Print Scenario
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- UTILITY FUNCTIONS FOR DYNAMIC VALUES ---
+        const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+        const getRandomFloat = (min, max, decimals) => parseFloat((Math.random() * (max - min) + min).toFixed(decimals));
+        const getRandomElement = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        
+        const generateAge = (ageGroup) => {
+            switch (ageGroup) {
+                case 'child': return getRandomInt(4, 16);
+                case 'adult': return getRandomInt(18, 64);
+                case 'elderly': return getRandomInt(65, 95);
+                default: return getRandomInt(18, 64);
+            }
+        };
+
+        /**
+         * Generates WETFLAG values for a given paediatric age.
+         * @param {number} age - The child's age.
+         * @returns {object} An object containing WETFLAG values.
+         */
+        const generateWetflag = (age) => {
+            const weight = (age + 4) * 2;
+            return {
+                'Weight (est)': `${weight} kg`,
+                'Energy (4J/kg)': `${4 * weight} J`,
+                'Tracheal Tube (uncuffed)': `${(age / 4 + 4).toFixed(1)} mm`,
+                'Fluid Bolus (20ml/kg)': `${20 * weight} ml`,
+                'Adrenaline 1:10,000 (0.1ml/kg)': `${(0.1 * weight).toFixed(1)} ml`,
+                'Glucose 10% (2ml/kg)': `${2 * weight} ml`
+            };
+        };
+
+        // --- DATABASE OF SCENARIOS AND DATA ---
+        const scenarioDB = {
+            // --- MEDICAL SCENARIOS ---
+            medical: [
+                {
+                    title: "Anaphylaxis",
+                    preamble: "You are the team leader in the resuscitation bay. A patient has just been brought in by ambulance after being exposed to a known allergen. They are becoming increasingly breathless.",
+                    patientDetails: (ageGroup, age) => `${age}-year-old with a known severe allergy. They did not have their adrenaline auto-injector with them.`,
+                    initialVitals: () => ({
+                        hr: `${getRandomInt(130, 150)} bpm (tachycardic)`,
+                        bp: `${getRandomInt(75, 85)}/${getRandomInt(40, 50)} mmHg (hypotensive)`,
+                        rr: `${getRandomInt(28, 38)} breaths/min (tachypnoeic with audible wheeze)`,
+                        sats: `${getRandomInt(88, 92)}% on room air`,
+                        temp: `${getRandomFloat(36.8, 37.2, 1)}°C`,
+                        gcs: `14/15 (anxious and confused)`
+                    }),
+                    bloodGasResults: () => ({
+                        type: "ABG",
+                        ph: `${getRandomFloat(7.22, 7.28, 2)} (Acidotic)`,
+                        pco2: `${getRandomFloat(7.0, 8.0, 1)} kPa (High - Type 2 Respiratory Failure)`,
+                        po2: `${getRandomFloat(7.5, 8.5, 1)} kPa (Hypoxic)`,
+                        hco3: `${getRandomInt(22, 25)} mmol/L`,
+                        be: `-${getRandomInt(1, 3)} mmol/L`,
+                        lactate: `${getRandomFloat(3.0, 4.0, 1)} mmol/L (Raised)`
+                    }),
+                    equipment: ["Full resuscitation trolley", "Airway management equipment (including surgical airway kit)", "IM Adrenaline", "IV fluids (crystalloid)", "Corticosteroids (Hydrocortisone)", "Antihistamines (Chlorphenamine)", "Nebulised Salbutamol/Ipratropium"],
+                    learningOutcomes: ["Early recognition and diagnosis of anaphylaxis.", "Prompt administration of IM adrenaline.", "Demonstrate a structured A-B-C-D-E approach.", "Interpretation of blood gas results in the context of airway compromise."],
+                    debriefPoints: ["Timing of adrenaline administration", "Decision-making regarding airway management", "Role clarity and closed-loop communication", "Second-line treatments and their importance."]
+                },
+                {
+                    title: "Septic Shock",
+                    preamble: "A patient has been sent from their care facility with a history of confusion and reduced mobility. The care staff report a recent infection.",
+                    patientDetails: (ageGroup, age) => `${age}-year-old with a background of comorbidities (e.g., Diabetes, Dementia). They may have an indwelling urinary catheter or recent chest infection.`,
+                    initialVitals: () => ({
+                        hr: `${getRandomInt(110, 130)} bpm (tachycardic)`,
+                        bp: `${getRandomInt(80, 90)}/${getRandomInt(45, 55)} mmHg (hypotensive)`,
+                        rr: `${getRandomInt(24, 30)} breaths/min`,
+                        sats: `${getRandomInt(91, 94)}% on room air`,
+                        temp: `${getRandomFloat(38.5, 39.5, 1)}°C (febrile)`,
+                        gcs: `12/15 (disorientated and drowsy)`
+                    }),
+                    bloodGasResults: () => ({
+                        type: "VBG",
+                        ph: `${getRandomFloat(7.18, 7.25, 2)} (Acidotic)`,
+                        pco2: `${getRandomFloat(4.5, 5.5, 1)} kPa (Compensatory)`,
+                        hco3: `${getRandomInt(14, 17)} mmol/L (Low)`,
+                        be: `-${getRandomInt(8, 12)} mmol/L`,
+                        lactate: `${getRandomFloat(6.0, 8.0, 1)} mmol/L (High)`
+                    }),
+                    equipment: ["Full resuscitation trolley", "IV access equipment", "Fluid warmer", "Broad-spectrum IV antibiotics", "Blood gas analyser", "Blood culture bottles", "Urinary catheter pack"],
+                    learningOutcomes: ["Timely recognition of sepsis and septic shock.", "Initiation of the 'Sepsis Six' bundle within the first hour.", "Appropriate fluid resuscitation and assessment of response.", "Correct choice and administration of empirical antibiotics."],
+                    debriefPoints: ["Sepsis Six pathway", "Interpreting a septic blood gas", "Fluid responsiveness assessment", "Communication with critical care/ICU."]
+                },
+            ],
+            // --- TRAUMA SCENARIOS ---
+            trauma: [
+                {
+                    title: "Blunt Trauma: Fall From Height",
+                    preamble: "The ambulance service are bringing in a patient who has fallen from a significant height. The mechanism is unclear but they were found at the bottom of a flight of stairs.",
+                    patientDetails: (ageGroup, age) => `${age}-year-old, found unconscious. Estimated fall of ${getRandomInt(3,6)} metres.`,
+                    initialVitals: () => ({
+                        hr: `${getRandomInt(120, 140)} bpm (tachycardic)`,
+                        bp: `${getRandomInt(80, 90)}/${getRandomInt(50, 60)} mmHg (hypotensive)`,
+                        rr: `${getRandomInt(25, 30)} breaths/min`,
+                        sats: `${getRandomInt(92, 95)}% on 15L non-rebreathe mask`,
+                        temp: `${getRandomFloat(36.0, 36.5, 1)}°C`,
+                        gcs: `${getRandomInt(9, 11)}/15`
+                    }),
+                    bloodGasResults: () => ({
+                        type: "ABG",
+                        ph: `${getRandomFloat(7.20, 7.28, 2)} (Metabolic Acidosis)`,
+                        pco2: `${getRandomFloat(4.0, 5.0, 1)} kPa`,
+                        po2: `${getRandomFloat(12.0, 15.0, 1)} kPa (on O2)`,
+                        hco3: `${getRandomInt(16, 20)} mmol/L`,
+                        be: `-${getRandomInt(6, 10)} mmol/L`,
+                        lactate: `${getRandomFloat(4.0, 6.0, 1)} mmol/L (Raised from shock)`
+                    }),
+                    equipment: ["Full trauma team activation", "C-spine immobilisation equipment", "Pelvic binder", "eFAST scanner", "IV access and warmed fluids", "Massive haemorrhage protocol activation call"],
+                    learningOutcomes: ["Systematic primary survey (C-A-B-C-D-E) in blunt trauma.", "Recognition and management of haemorrhagic shock.", "Identification of potential injuries (e.g., pelvic fracture, intra-abdominal bleed).", "Effective team leadership and resource management."],
+                    debriefPoints: ["Haemorrhage control strategies", "Use of eFAST in trauma", "Decision making for CT imaging", "Damage control resuscitation principles."]
+                },
+                {
+                    title: "Penetrating Trauma: Stab Wound to Chest",
+                    preamble: "Police are escorting an ambulance to the department with a patient who has been assaulted and has a stab wound to the chest. ETA 2 minutes.",
+                    patientDetails: (ageGroup, age) => `${age}-year-old, with a single stab wound to the ${getRandomElement(['left', 'right'])} anterior chest, ${getRandomInt(4, 6)}th intercostal space.`,
+                    initialVitals: () => ({
+                        hr: `${getRandomInt(130, 150)} bpm (tachycardic)`,
+                        bp: `${getRandomInt(75, 85)}/${getRandomInt(45, 55)} mmHg (hypotensive)`,
+                        rr: `${getRandomInt(30, 40)} breaths/min (in distress)`,
+                        sats: `${getRandomInt(86, 90)}% on 15L non-rebreathe mask`,
+                        temp: `${getRandomFloat(36.2, 36.8, 1)}°C`,
+                        gcs: `14/15 (Anxious and in pain)`
+                    }),
+                    bloodGasResults: () => ({
+                        type: "ABG",
+                        ph: `${getRandomFloat(7.15, 7.25, 2)} (Mixed Acidosis)`,
+                        pco2: `${getRandomFloat(6.5, 7.5, 1)} kPa (High)`,
+                        po2: `${getRandomFloat(7.0, 8.0, 1)} kPa (Hypoxic)`,
+                        hco3: `${getRandomInt(18, 21)} mmol/L`,
+                        be: `-${getRandomInt(5, 8)} mmol/L`,
+                        lactate: `${getRandomFloat(3.0, 5.0, 1)} mmol/L (Raised)`
+                    }),
+                    equipment: ["Full trauma team activation", "Chest drain insertion kit", "Needle decompression equipment", "eFAST scanner", "IV access and warmed fluids", "Massive haemorrhage protocol activation call"],
+                    learningOutcomes: ["Rapid identification of life-threatening chest injury (e.g., tension pneumothorax, massive haemothorax, tamponade).", "Performance of appropriate life-saving intervention (e.g., chest drain).", "Use of eFAST to differentiate causes of shock.", "Consideration for emergency thoracotomy."],
+                    debriefPoints: ["Differentiating causes of obstructive shock in trauma", "Anatomical landmarks for chest drain insertion", "The 'lethal triad' of trauma", "Communication with surgical specialties."]
+                },
+            ],
+            // --- CARDIAC ARREST SCENARIOS ---
+            cardiac_arrest: [
+                {
+                    title: "Cardiac Arrest",
+                    preamble: "A patient has just collapsed in the department. A nurse has commenced CPR and has called for the resuscitation team. The defibrillator is being brought to the patient.",
+                    patientDetails: (ageGroup, age) => `${age}-year-old who was seen clutching their chest before collapsing.`,
+                    initialVitals: () => ({
+                        hr: `Rhythm is ${getRandomElement(['PEA', 'Asystole'])}, deteriorating to VF`,
+                        bp: `Unrecordable`,
+                        rr: `Apnoeic`,
+                        sats: `Unrecordable`,
+                        temp: `N/A`,
+                        gcs: `3/15`
+                    }),
+                    bloodGasResults: () => ({
+                        type: "VBG (during CPR)",
+                        ph: `${getRandomFloat(6.85, 6.95, 2)} (Profound Acidosis)`,
+                        pco2: `${getRandomFloat(9.5, 10.5, 1)} kPa`,
+                        po2: "N/A",
+                        hco3: `${getRandomInt(11, 14)} mmol/L`,
+                        be: `-${getRandomInt(16, 20)} mmol/L`,
+                        lactate: `${getRandomFloat(14.0, 18.0, 1)} mmol/L (Very High)`
+                    }),
+                    equipment: ["Defibrillator/Monitor", "Full resuscitation trolley with drugs (Adrenaline, Amiodarone)", "Advanced airway equipment (e.g., i-Gel, Endotracheal tube)", "Mechanical CPR device (e.g., LUCAS) if available"],
+                    learningOutcomes: ["High-quality, uninterrupted chest compressions.", "Rapid rhythm analysis and safe defibrillation.", "Adherence to current Resuscitation Council UK ALS algorithm.", "Effective management of reversible causes (4 H's and 4 T's)."],
+                    debriefPoints: ["Peri-arrest period management", "Quality of CPR (rate, depth, recoil)", "Interpreting blood gas in cardiac arrest", "Post-ROSC care planning."]
+                },
+            ],
+             // --- OBSTETRIC SCENARIOS ---
+            obstetric: [
+                {
+                    title: "Eclamptic Seizure",
+                    preamble: "A pregnant patient has been brought in by her partner. She is complaining of a severe headache and visual disturbances. While you are assessing her, she has a tonic-clonic seizure.",
+                    patientDetails: (ageGroup, age) => `${age}-year-old female, ${getRandomInt(32, 38)} weeks pregnant. This is her first child.`,
+                    initialVitals: () => ({
+                        hr: `${getRandomInt(105, 120)} bpm`,
+                        bp: `${getRandomInt(170, 190)}/${getRandomInt(110, 120)} mmHg (severely hypertensive)`,
+                        rr: `Post-ictal, slow and snoring respirations`,
+                        sats: `${getRandomInt(88, 91)}% on air`,
+                        temp: `${getRandomFloat(37.0, 37.4, 1)}°C`,
+                        gcs: `Post-ictal, GCS ${getRandomInt(8,10)}`
+                    }),
+                    bloodGasResults: () => ({
+                        type: "ABG (post-seizure)",
+                        ph: `${getRandomFloat(7.20, 7.25, 2)} (Acidotic)`,
+                        pco2: `${getRandomFloat(6.8, 7.5, 1)} kPa (High)`,
+                        po2: `${getRandomFloat(8.0, 9.0, 1)} kPa (Hypoxic)`,
+                        hco3: `${getRandomInt(18, 20)} mmol/L`,
+                        be: `-${getRandomInt(5, 7)} mmol/L`,
+                        lactate: `${getRandomFloat(5.0, 6.0, 1)} mmol/L (Raised from seizure activity)`
+                    }),
+                    equipment: ["Full resuscitation trolley", "Magnesium Sulphate infusion", "IV antihypertensives (e.g., Labetalol, Hydralazine)", "Airway adjuncts", "Difficult airway trolley", "Contact details for senior obstetrician and anaesthetist"],
+                    learningOutcomes: ["Immediate management of an active seizure.", "Recognition of eclampsia as the cause.", "Correct calculation and administration of Magnesium Sulphate.", "Management of severe hypertension in pregnancy.", "Timely escalation to senior obstetric, anaesthetic, and neonatal teams."],
+                    debriefPoints: ["Magnesium Sulphate toxicity signs and management", "Choice of antihypertensive", "Definitive management (delivery of baby)", "Multidisciplinary team working."]
+                },
+            ]
+        };
+
+        // --- HUMAN FACTORS DATA ---
+        const humanFactorsDB = {
+            standard: {
+                title: "Standard Conditions",
+                description: "No specific human factor challenge. Focus on core clinical and teamwork skills."
+            },
+            blindfolded_leader: {
+                title: "Human Factor Challenge: Blindfolded Leader",
+                description: "The designated team leader must be blindfolded. They cannot perform any procedures and must rely entirely on verbal reports from the team. Their role is purely to direct the team and process information. This challenges communication, trust, and descriptive skills."
+            },
+            leader_only_speaks: {
+                title: "Human Factor Challenge: Only Leader Speaks",
+                description: "Only the designated team leader is allowed to speak. No other team member may speak at all. All communication from the team to the leader must be non-verbal (e.g., pointing, showing equipment, gestures). This challenges the leader's situational awareness and forces them to actively seek information from a silent team."
+            },
+            language_barrier: {
+                title: "Human Factor Challenge: Language Barrier",
+                description: "A confederate (or faculty member) will play the role of a key team member (e.g., the primary nurse) who speaks a different language. They can understand some basic English but cannot speak it fluently. The team must find ways to communicate effectively using gestures, translation apps, or other team members."
+            },
+            obstructive_person: {
+                title: "Human Factor Challenge: Obstructive Person",
+                description: "A confederate (or faculty member) will play the role of a relative or another healthcare professional who is being obstructive or challenging. They may question every decision, get in the way, or provide distracting information. The team must manage this person professionally while continuing to provide patient care."
+            }
+        };
+
+        // --- DOM ELEMENTS ---
+        const generateBtn = document.getElementById('generate-btn');
+        const printBtn = document.getElementById('print-btn');
+        const scenarioOutput = document.getElementById('scenario-output');
+        const outputActions = document.getElementById('output-actions');
+        
+        // --- EVENT LISTENERS ---
+        generateBtn.addEventListener('click', displayScenario);
+        printBtn.addEventListener('click', () => window.print());
+
+        // --- MAIN FUNCTION ---
+        function displayScenario() {
+            // 1. Get user selections
+            const ageGroup = document.getElementById('age-group').value;
+            let problemType = document.getElementById('problem-type').value;
+            const humanFactorKey = document.getElementById('human-factors').value;
+
+            // Handle edge case: obstetric scenarios should be adults
+            const finalAgeGroup = (problemType === 'obstetric') ? 'adult' : ageGroup;
+            const age = generateAge(finalAgeGroup);
+
+            // 2. Handle random problem type
+            if (problemType === 'random') {
+                const availableTypes = Object.keys(scenarioDB);
+                problemType = getRandomElement(availableTypes);
+            }
+
+            // 3. Select scenario and human factor
+            const scenario = getRandomElement(scenarioDB[problemType]);
+            const humanFactor = humanFactorsDB[humanFactorKey];
+
+            // 4. Generate dynamic content by CALLING the functions
+            const patientDetails = scenario.patientDetails(finalAgeGroup, age);
+            const vitals = scenario.initialVitals();
+            const bloodGas = scenario.bloodGasResults();
+            
+            // 5. Generate WETFLAG HTML if it's a child
+            let wetflagHtml = '';
+            if (finalAgeGroup === 'child') {
+                const wetflagData = generateWetflag(age);
+                wetflagHtml = `
+                    <div class="scenario-section">
+                        <h3 class="text-lg font-semibold text-gray-800 border-l-4 border-amber-500 pl-3">Paediatric WETFLAG</h3>
+                        <p class="text-sm text-gray-600 mt-1">Estimated values based on age (${age} years)</p>
+                        <ul class="mt-2 list-disc list-inside text-gray-700 space-y-1">
+                            ${Object.entries(wetflagData).map(([key, value]) => `<li><strong>${key}:</strong> ${value}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            // 6. Build final HTML output
+            scenarioOutput.innerHTML = `
+                <div class="border-b-2 border-gray-200 pb-4 mb-6">
+                    <h2 class="text-2xl md:text-3xl font-bold text-indigo-700">${scenario.title}</h2>
+                    <p class="text-md text-gray-500 mt-1">Age Group: <span class="font-semibold">${finalAgeGroup.charAt(0).toUpperCase() + finalAgeGroup.slice(1)}</span></p>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="scenario-section">
+                        <h3 class="text-lg font-semibold text-gray-800 border-l-4 border-indigo-500 pl-3">Preamble</h3>
+                        <p class="mt-2 text-gray-700">${scenario.preamble}</p>
+                    </div>
+
+                    <div class="scenario-section">
+                        <h3 class="text-lg font-semibold text-gray-800 border-l-4 border-indigo-500 pl-3">Patient Details</h3>
+                        <p class="mt-2 text-gray-700">${patientDetails}</p>
+                    </div>
+
+                    <div class="scenario-section">
+                        <h3 class="text-lg font-semibold text-gray-800 border-l-4 border-indigo-500 pl-3">Initial Vital Signs</h3>
+                        <ul class="mt-2 list-disc list-inside text-gray-700 space-y-1">
+                            ${Object.entries(vitals).map(([key, value]) => `<li><strong>${key.toUpperCase()}:</strong> ${value}</li>`).join('')}
+                        </ul>
+                    </div>
+
+                    <div class="scenario-section">
+                        <h3 class="text-lg font-semibold text-gray-800 border-l-4 border-indigo-500 pl-3">Blood Gas Results (${bloodGas.type})</h3>
+                        <ul class="mt-2 list-disc list-inside text-gray-700 space-y-1">
+                            ${Object.entries(bloodGas).filter(([key]) => key !== 'type').map(([key, value]) => `<li><strong>${key.charAt(0).toUpperCase() + key.slice(1)}:</strong> ${value}</li>`).join('')}
+                        </ul>
+                    </div>
+                    
+                    ${wetflagHtml}
+
+                    <div class="scenario-section">
+                        <h3 class="text-lg font-semibold text-gray-800 border-l-4 border-indigo-500 pl-3">Human Factors Challenge</h3>
+                        <p class="mt-1 text-md font-bold">${humanFactor.title}</p>
+                        <p class="mt-2 text-gray-700">${humanFactor.description}</p>
+                    </div>
+
+                    <div class="scenario-section">
+                        <h3 class="text-lg font-semibold text-gray-800 border-l-4 border-indigo-500 pl-3">Key Equipment</h3>
+                        <ul class="mt-2 list-disc list-inside text-gray-700 space-y-1">
+                            ${scenario.equipment.map(item => `<li>${item}</li>`).join('')}
+                        </ul>
+                    </div>
+
+                    <div class="scenario-section">
+                        <h3 class="text-lg font-semibold text-gray-800 border-l-4 border-indigo-500 pl-3">Primary Learning Outcomes</h3>
+                        <ul class="mt-2 list-disc list-inside text-gray-700 space-y-1">
+                            ${scenario.learningOutcomes.map(item => `<li>${item}</li>`).join('')}
+                        </ul>
+                    </div>
+
+                    <div class="scenario-section">
+                        <h3 class="text-lg font-semibold text-gray-800 border-l-4 border-indigo-500 pl-3">Potential Debrief Points</h3>
+                        <ul class="mt-2 list-disc list-inside text-gray-700 space-y-1">
+                            ${scenario.debriefPoints.map(item => `<li>${item}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+
+            // 7. Show the output
+            scenarioOutput.style.display = 'block';
+            outputActions.style.display = 'block';
+        }
+
+    </script>
+</body>
+</html>
